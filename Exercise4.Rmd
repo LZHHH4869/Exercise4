@@ -1,0 +1,408 @@
+---
+title: "Exercise4"
+author: "Zonghao Li"
+date: "2021/5/7"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is my fourth exercise in Data Mining class! 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(modelr)
+```
+
+# Problem1: Clustering and PCA
+The dataset in problem 1 contains information on 11 chemical properties of 6500 different bottles of vinho verde wine from northen Portugal. Our task is to choose a method to distinguish the colors and qualities of wines by using only "unsupervised" information contained in the data on chemical properties, after running both a clustering algotithm and PCA. It should be noted that before analyzing problems, we firstly adjust the values of 'color' vaiable. (converting 'red' into 1 and convering 'white' into 0)
+
+**Part 1: PCA--Principle Component Analysis**
+
+Before running PCA, the varibles should be scaled firstly.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+wine1 <- read.csv("~/Desktop/Exercise4/wine1.csv")
+PCA1=prcomp(wine1-wine1$quality-wine1$color, scale=TRUE)
+plot(PCA1, xlab="Principle Component", main="Figure1A. Variances Explained")
+summary(PCA1)
+```
+
+From this plot and table above, we can learn that the first four principle components are able to explain about 91.3% variances of data, so 4 principle components are selected to analyze problems convincingly. Then a biplot below shows the scores of the principal components and the positions of the loading vectors, where the specific values of the load vectors are given in the table below.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+round(PCA1$rotation[,1:4],2)
+wine1=merge(wine1,PCA1$x[,1:4], by="row.names")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+PCA1$rotation[,1:4]
+biplot(PCA1, scale=0)
+```
+
+From the results in the table and the biplot above, the values of volatile.acidity, density and color are similar in the first principle component and diocide value is significant in the principle component, so the ability to distinguish the red wines from the white wines is not strong.
+
+**Part 2: A clustering algorithm -- hierarchical clustering**
+
+Hierarchical clustering is selected to do the clustering analysis. Firstly, we should normalize the variables. Then use the single linkage, the complete linkage and the average linkage methods to do hierarchical clustering on the variables respectively, using the Euclidean distance as an indicator of the dissimilarity variables. A significant advantage of the hierarchical clustering method is that it can output a fascinating tree representation about individual observations, i.e., a dendrogram.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+wine11 <- read.csv("~/Desktop/Exercise4/wine11.csv")
+wine_scaled=scale(wine11, center=TRUE, scale=TRUE)
+wine_distance_matrix=dist(wine_scaled, method="euclidean")
+
+h1 = hclust(wine_distance_matrix, method='single')
+h2 = hclust(wine_distance_matrix, method='complete')
+h3 = hclust(wine_distance_matrix, method='average')
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+plot(h1, cex=0.3, main="Figure1B. Cluster Dendrogram (Single)")
+plot(h2, cex=0.3, main="Figure1C. Cluster Dendrogram (Complete)")
+plot(h3, cex=0.3, main="Figure1D. Cluster Dendrogram (Average)")
+```
+
+From the three dendrograms, it is obvious that using complete linkage to do hierarchical clustering can yield categories of relatively more balanced size. Since the dataset is very large, we set k=10 rather than 4 in PCA before.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+cluster2 = cutree(h2, k=10)
+summary(factor(cluster2))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+table(cluster2, wine11$color)
+```
+
+As the simple table shows, it is easy for us to distinguish the color of wines in some clusters. For example, white wines occupy the majority in cluster 4 while the reds occupy the majority in cluster 2. Especially, in the last four clusters, it is more obvious to distinguish the colors. 
+
+How about the quality of wines?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+table(cluster2, wine11$quality)
+```
+
+Comparing to color of wines, it is not very easy to distinguish the higher from the lower quality wines except for the last three clusters. However, recalling the biplot in PCA before, the values of quality in PC2 is relatively very large, so it is easy to distinguish the higher from lower quality wines in PCA.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+biplot(PCA1, scale=0)
+```
+
+
+# Problem 2: Market Segmentation
+
+One purpose of market segmentation is to segment the market by identifying people who are more inclined to accept a particular form of advertising or who are more likely to buy a particular product. The data in this problem was collected in the course of a market-research study using followers of the Twitter account of a large consumer drinks brand called "NutrientH20"(just to have a label). The goal is to just use the data to come up with some interesting, well-supported insights about the audience and give the client some insight as to how they might position their brand to maximally appeal to each market segment.
+
+**Part 1: Summaries of dataset**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Now the data of social marketing
+socialmarketing <- read.csv("~/Desktop/Exercise4/social_marketing.csv", row.names=1)
+summary(socialmarketing)
+```
+
+
+Genarally, the summary of dataset shows that the most popular field is chatter, then some relatively popular fields contain photo-sharing, health-nutrition, cooking, and so on. In contrast, these areas such as business, small business, eco, which are in the business field, are less popular with the public.
+
+
+**Part 2: Method--PCA**
+
+PCA, principle component analysis, is a widely used class of methods in exploratory data analysis.
+
+Before doing PCA, the variables should be centered and scaled. This is what sets PCA apart from other guided and unguided learning techniques.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Now the data of social marketing
+PCA2=prcomp(socialmarketing-socialmarketing$uncategorized-socialmarketing$spam-socialmarketing$adult, scale=TRUE)
+pve=PCA2$sdev^2/sum(PCA2$sdev^2)
+plot(pve, type="o", ylab="PVE", xlab="Principal Component", main="Figure2A. PVE (Scree Plot)", col="blue")
+plot(cumsum(pve), type="o", ylab="Cumulative PVE", xlab="Principal Component", main="Figure2B. Cumulative PVE", col="brown")
+summary(PCA2)
+```
+
+The scree plot (PVE) and the cumulative PVE plot can decide the number of principle components that will be needed. It shows that from about 8th to 10th components, the cumulative PVE curve tends to be flat. Also. from the results in the table above, we can learn that the first eight principle components are able to explain about 86.3% variances of data, so 8 principle components can be selected to analyze problems convincingly.
+
+**Part 3: Results**
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+round(PCA2$rotation[,1:8],2)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+PCA2$rotation[,1:8]
+```
+
+To be specific, the values in the first principle component are similar to each other, so this is not convincing to help us decide audiences' appeal to any market segment. Then let's pay more attention to the following principle components below. In the fourth principle components, these audiences might be the group among undergraduates and graduates who are studying in school, because they very care about college and university and also care much about online games, sports and films, which are all concerns for the teenage age group and in school life. In the fifth principle component, this represents mainly a middle-aged group, since these audiences care much about religion, parenting and sports. In the sixth principle component, the audiences may be a group of women, since they pay much attention to cooking, fashion and beauty. In the eighth principle component, the audiences may be a group of cultural artists or people who look after the art field, because they care more about art, tv shows and films. So for each segmented principle components of the population, the clients are able to position their brand to maximally appeal to each market segment, by the needs of specific categories of customers.
+
+
+# Problem 3: Association rules for grocery purchases
+
+The data file in this problem is a list of shopping baskets: one person's basket for each row, with multiple items per row separated by commas. The goal is to use the data on grocery purchases and find some interesting association rules for these shopping baskets.
+
+```{r,include=FALSE}
+library(tidyverse)
+library(arules) # has a big ecosystem of packages built around it.
+library(arulesViz)
+library(igraph)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+groceries = read.csv("~/Desktop/Exercise4/groceries.txt",header = FALSE)
+groceries$buyer = seq.int(nrow(groceries))
+groceries = cbind(groceries[,5], stack(lapply(groceries[,1:4], as.character)))[1:2]
+colnames(groceries) = c("Customer","Goods")
+groceries = groceries[order(groceries$Customer),]
+groceries = groceries[!(groceries$Goods==""),]
+row.names(groceries) = 1:nrow(groceries)
+groceries$Customer = factor(groceries$Customer)
+groceries_counts = groceries %>%
+  group_by(Goods) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(groceries_counts, 20) %>%
+  ggplot() +
+  geom_col(aes(y=reorder(Goods, count), x=count)) + 
+  labs(y="Goods",x="count")
+```
+
+The graph above shows the top 20 popular goods among our customers in dataset. In general, we can see that whole milk ranks the most among these top 20 goods. Other vegetables, rolls/buns and soda are very popular following after whole milk.
+
+
+```{r, include=FALSE,message=FALSE,warning=FALSE}
+# First split data into a list of goods for each customer.
+groceries_list = split(x=groceries$Goods, f=groceries$Customer)
+
+groceries_list = lapply(groceries_list, unique)
+
+groceries_trans = as(groceries_list, "transactions")
+
+# Run the 'apriori' algorithm.
+rules = apriori(groceries_trans, 
+                    parameter=list(support=.005, confidence=.1, maxlen=2))
+inspect(rules)
+
+inspect(subset(rules, lift > 7))
+inspect(subset(rules, confidence > 0.6))
+inspect(subset(rules, lift > 10 & confidence > 0.05))
+```
+
+In the data pre-processing, we should firstly split data into a list of goods for each customer. After several steps we can run the 'apriori' algorithm. (Look at rules with support>0.01, confidence>0.1 and length <=5)  Then make a plot of all the rules below.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+plot(rules, measure = c("support", "lift"), shading = "confidence")
+```
+
+The plot shows that there are so many rules here that makes it difficult for us to learn about the association rules well. So, then we will look at subsets driven by the plot.
+
+```{r, include=FALSE,message=FALSE,warning=FALSE}
+sub1 = subset(rules, subset=confidence > 0.01 & support > 0.005)
+summary(sub1)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+plot(head(sub1, 50, by='lift'), method='graph')
+```
+
+By choosing 50 rules for simplicity, this can make sense to some extent. For example, whipped/sour cream, cheese, butter, cream point to yogurt, since they all belong to the milk/dairy products. On the other hand, beef, onions, berries, chicken point to other vegetables. This also looks meaningful to us!
+
+```{r, include=FALSE,message=FALSE,warning=FALSE}
+# export a graph 
+saveAsGraph(sub1, file = "musicrules.graphml")
+```
+
+
+# Problem 4: Author Attribution
+
+In this question, the task is to build the best model you can, using any combination of tools you see fit, for predicting the author of an article on the basis of that article's textual content. In the both C50train and C50test directories, there are 50 articles from each of 50 different authors (one author per directory). 
+
+
+**Step1: Collecting data**
+
+Here displays a figure showing the element 1 of the training dataset.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(readtext)
+
+#Train Dataset#
+train_dir = system.file("~Desktop/ReutersC50/C50train/")
+
+train=readtext(paste0(train_dir, "~Desktop/ReutersC50/C50train/*"),
+                    dvsep="\n")
+
+head(train$text, n=1)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Test Dataset#
+test_dir = system.file("~Desktop/ReutersC50/C50test/")
+
+test=readtext(paste0(test_dir, "~Desktop/ReutersC50/C50test/*"),
+               dvsep="\n")
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Author Names
+Authornames <- as.data.frame(rep(basename(list.dirs("~Desktop/ReutersC50/C50train")), each = 50))
+Authornames <- Authornames[-(1:50),]
+
+#Assigning Author name to Text
+test$Author <- Authornames
+train$Author <- Authornames
+
+#Dropping ID Column
+test = test[-1]
+train = train[-1]
+
+#Converting Author Column to Factor
+test$Author <- as.factor(test$Author)
+train$Author <- as.factor(train$Author)
+
+#Filtering Data by 5 Authors
+library(dplyr)
+library(data.table)
+AaronTrain = train %>% 
+  filter(Author == "AaronPressman", text == text)
+HeatherTrain = train %>% 
+  filter(Author == "HeatherScoffield", text == text)
+KirstinTrain = train %>% 
+  filter(Author == "KirstinRidley", text == text)
+PatriciaTrain = train %>% 
+  filter(Author == "PatriciaCommins", text == text)
+WilliamTrain = train %>% 
+  filter(Author == "WilliamKazer", text == text)
+train = rbind(AaronTrain, HeatherTrain, KirstinTrain, PatriciaTrain, WilliamTrain)
+
+AaronTest = test %>% 
+  filter(Author == "AaronPressman", text == text)
+HeatherTest = test %>% 
+  filter(Author == "HeatherScoffield", text == text)
+KirstinTest = test %>% 
+  filter(Author == "KirstinRidley", text == text)
+PatriciaTest = test %>% 
+  filter(Author == "PatriciaCommins", text == text)
+WilliamTest = test %>% 
+  filter(Author == "WilliamKazer", text == text)
+test = rbind(AaronTest, HeatherTest, KirstinTest, PatriciaTest, WilliamTest)
+
+dim(test)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+dim(train)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+table(train$Author)
+```
+
+
+**Step2: Exploring and preprocessing data**
+
+In the beginning there are no missing values in the dataset after checking it. To analyze the textdata, the first step involves creating a corpus, which refers to a collection of text documents. It creates the R object to store text documents. Then the corpus data should be cleaned. For cleaning the corpus, the text would be converted to lower case using “tolower” attribute of tm_map. Next using “removeNumbers”, “removeWords”, “stopwords()” and “stripWhitespace” functions, the number, stopping words and white spaces would be removed. The figure below shows the clean corpus element 1 of training dataset.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Step2 Exploring and preprocessing data#
+
+#Checking for missing values
+any(is.na(train))
+any(is.na(test))
+
+library(tm)
+#Creating Corpus
+test_corpus = Corpus(VectorSource(test$text))
+train_corpus = Corpus(VectorSource(train$text))
+
+#Corpus Cleaning
+test_corpus_clean <- tm_map(test_corpus, tolower)
+train_corpus_clean <- tm_map(train_corpus, tolower)
+
+test_corpus_clean <- tm_map(test_corpus_clean, removeNumbers)
+train_corpus_clean <- tm_map(train_corpus_clean, removeNumbers)
+
+test_corpus_clean <- tm_map(test_corpus_clean, removeWords, stopwords())
+train_corpus_clean <- tm_map(train_corpus_clean, removeWords, stopwords())
+
+test_corpus_clean <- tm_map(test_corpus_clean, removePunctuation)
+train_corpus_clean <- tm_map(train_corpus_clean, removePunctuation)
+
+test_corpus_clean <- tm_map(test_corpus_clean, stripWhitespace)
+train_corpus_clean <- tm_map(train_corpus_clean, stripWhitespace)
+
+inspect(train_corpus_clean[1])
+```
+
+The data is then split into individual components commonly known as tokenization. A data structure called Sparse Matrix in which rows indicate the Text and Column represents the word should be created.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Sparse Matrix
+test_dtm <- DocumentTermMatrix(test_corpus_clean)
+train_dtm <- DocumentTermMatrix(train_corpus_clean)
+
+inspect(train_dtm)
+```
+
+To predict the model using Naive Bayes Classification, the training and testing datasets are obtained using frequency of words.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+##### Preparing Training and Testing Datasets #####
+### Creating Indicator features for frequent words ###
+FreqWords <- findFreqTerms(train_dtm, 5)
+
+#Saving List using Dictionary() Function
+Dictionary <- function(x) {
+  if( is.character(x) ) {
+    return (x)
+  }
+  stop('x is not a character vector')
+}
+
+dict <- Dictionary(findFreqTerms(train_dtm, 5))
+
+#Appending Document Term Matrix to Train and Test Dataset 
+data_train <- DocumentTermMatrix(train_corpus_clean, list(dict))
+data_test <- DocumentTermMatrix(test_corpus_clean, list(dict))
+
+#Converting the frequency of word to count
+convert_counts <- function(x) {
+  x <- ifelse(x > 0, 1, 0)
+  x <- factor(x, levels = c(0, 1), labels = c("No", "Yes")) 
+  return(x)
+}
+
+#Appending count function to Train and Test Dataset
+data_train <- apply(data_train, MARGIN = 2, convert_counts)
+data_test <- apply(data_test, MARGIN = 2, convert_counts)
+```
+
+
+**Step3: Training a model and evaluating model performance**
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Step3#
+library(e1071)
+classifier <- naiveBayes(data_train, train$Author)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(gmodels)
+test_pred <- predict(classifier, data_test)
+CrossTable(test_pred, test$Author,
+           prop.chisq = FALSE, prop.t = FALSE,
+           dnn = c('predicted', 'actual'))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Evaluating model performance#
+accuracy = mean(test_pred == test$Author)
+print(accuracy)
+```
+
+From the results we can observe that the accuracy achieved is 87.6%.
+
